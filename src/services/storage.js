@@ -2,6 +2,7 @@ import { INITIAL_PORTFOLIO_DATA } from '../types/portfolio';
 
 const STORAGE_KEY = 'personal_portfolio_website_data';
 const PUBLISHED_KEY = 'personal_portfolio_published_info';
+const REGISTRY_KEY = 'personal_portfolio_registry';
 
 export const loadSavedPortfolio = () => {
   try {
@@ -57,4 +58,35 @@ export const loadPublishedInfo = () => {
   } catch (err) {
     return null;
   }
+};
+
+export const saveLocalPortfolioRecord = (record) => {
+  if (!record || !record.slug) return;
+  try {
+    const raw = localStorage.getItem(REGISTRY_KEY);
+    const registry = raw ? JSON.parse(raw) : {};
+    registry[record.slug] = {
+      ...record,
+      updated_at: new Date().toISOString(),
+    };
+    localStorage.setItem(REGISTRY_KEY, JSON.stringify(registry));
+  } catch (err) {
+    console.error('Error updating local portfolio registry:', err);
+  }
+};
+
+export const getLocalPortfolioRecord = (slug) => {
+  if (!slug) return null;
+  try {
+    const raw = localStorage.getItem(REGISTRY_KEY);
+    if (!raw) return null;
+    const registry = JSON.parse(raw);
+    const item = registry[slug.toLowerCase().trim()];
+    if (item && item.is_published !== false) {
+      return item;
+    }
+  } catch (err) {
+    console.error('Error reading local portfolio registry:', err);
+  }
+  return null;
 };

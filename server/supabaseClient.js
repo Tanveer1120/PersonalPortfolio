@@ -45,11 +45,14 @@ const writeLocalData = (data) => {
 
 export const db = {
   async getBySlug(slug) {
+    if (!slug) return null;
+    const cleanSlug = slug.toLowerCase().trim();
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('portfolios')
         .select('*')
-        .eq('slug', slug)
+        .eq('slug', cleanSlug)
         .eq('is_published', true)
         .single();
       if (error) {
@@ -61,25 +64,33 @@ export const db = {
 
     // Persistent JSON Store
     const all = readLocalData();
-    const item = all[slug];
-    if (item && item.is_published) {
+    const item = all[cleanSlug] || all[slug];
+    if (item && item.is_published !== false) {
       return item;
     }
     return null;
   },
 
   async upsert(record) {
+    const cleanSlug = (record.slug || '').toLowerCase().trim();
+    const cleanRecord = {
+      ...record,
+      slug: cleanSlug,
+      template_id: record.template_id || record.data?.templateId || 'modern-professional',
+      is_published: record.is_published ?? true,
+    };
+
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
         .from('portfolios')
         .upsert(
           {
-            slug: record.slug,
-            title: record.title,
-            data: record.data,
-            template_id: record.template_id,
-            owner_token: record.owner_token,
-            is_published: record.is_published ?? true,
+            slug: cleanRecord.slug,
+            title: cleanRecord.title,
+            data: cleanRecord.data,
+            template_id: cleanRecord.template_id,
+            owner_token: cleanRecord.owner_token,
+            is_published: cleanRecord.is_published ?? true,
             updated_at: new Date().toISOString(),
           },
           { onConflict: 'slug' }
@@ -96,15 +107,15 @@ export const db = {
 
     // Persistent JSON Store
     const all = readLocalData();
-    const existing = all[record.slug] || {};
+    const existing = all[cleanSlug] || {};
     const updated = {
       ...existing,
-      ...record,
+      ...cleanRecord,
       created_at: existing.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      is_published: record.is_published ?? true,
+      is_published: cleanRecord.is_published ?? true,
     };
-    all[record.slug] = updated;
+    all[cleanSlug] = updated;
     writeLocalData(all);
     return updated;
   },

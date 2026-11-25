@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Edit3,
   Download,
@@ -10,8 +10,7 @@ import {
   ExternalLink,
   Layers,
   AlertTriangle,
-  Globe,
-  Share2
+  Globe
 } from 'lucide-react';
 import TemplateRenderer from '../templates/TemplateRenderer';
 import { TEMPLATES } from '../types/portfolio';
@@ -20,45 +19,57 @@ import { generatePortfolioPdf } from '../pdf/generatePortfolioPdf';
 import { api } from '../services/api';
 import { savePublishedInfo, loadPublishedInfo, clearSavedPortfolio } from '../services/storage';
 
+const generateSlug = (name) => {
+  const raw = (name || 'portfolio')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '');
+  const randomHex = Math.random().toString(36).substring(2, 8);
+  return `${raw || 'portfolio'}-${randomHex}`;
+};
+
 export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }) {
   const navigate = useNavigate();
   const [selectedTemplate, setSelectedTemplate] = useState(
     portfolioData.templateId || 'modern-professional'
   );
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [publishedInfo, setPublishedInfo] = useState(() => loadPublishedInfo());
+
+  // Initialize publishedInfo immediately so the shareable link is available without delay
+  const [publishedInfo, setPublishedInfo] = useState(() => {
+    const existing = loadPublishedInfo();
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    if (existing && existing.slug) {
+      const fixedUrl = existing.url || `${currentOrigin}/portfolio/${existing.slug}`;
+      return { ...existing, url: fixedUrl };
+    }
+    const slug = generateSlug(portfolioData.personal?.fullName);
+    const ownerToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+    const info = {
+      slug,
+      ownerToken,
+      url: `${currentOrigin}/portfolio/${slug}`,
+      updatedAt: new Date().toISOString(),
+    };
+    savePublishedInfo(info);
+    return info;
+  });
+
   const [isSavingOnline, setIsSavingOnline] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('saved');
   const [copied, setCopied] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
 
-  // Generate unique slug like: rahul-kumar-a82k91
-  const generateSlug = () => {
-    const raw = (portfolioData.personal?.fullName || 'portfolio')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '');
-    const randomHex = Math.random().toString(36).substring(2, 8);
-    return `${raw || 'portfolio'}-${randomHex}`;
-  };
-
-  // AUTOMATIC PERSISTENCE: Save to database and generate shareable link automatically
+  // AUTOMATIC PERSISTENCE: Save to database and ensure public link is in sync
   useEffect(() => {
     let isCancelled = false;
 
     const autoSyncToDatabase = async () => {
+      if (!publishedInfo?.slug) return;
       setIsSavingOnline(true);
-      setSyncStatus('saving');
 
       try {
-        let slug = publishedInfo?.slug;
-        let ownerToken = publishedInfo?.ownerToken;
-
-        if (!slug || !ownerToken) {
-          slug = generateSlug();
-          ownerToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        }
-
+        const slug = publishedInfo.slug;
+        const ownerToken = publishedInfo.ownerToken;
         const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
         const publicUrl = `${currentOrigin}/portfolio/${slug}`;
 
@@ -79,13 +90,9 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
           };
           setPublishedInfo(updatedInfo);
           savePublishedInfo(updatedInfo);
-          setSyncStatus('saved');
         }
       } catch (err) {
-        console.error('Automatic background sync to database failed:', err);
-        if (!isCancelled) {
-          setSyncStatus('fallback');
-        }
+        console.error('Automatic background sync failed:', err);
       } finally {
         if (!isCancelled) {
           setIsSavingOnline(false);
@@ -98,7 +105,7 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
     return () => {
       isCancelled = true;
     };
-  }, [portfolioData, selectedTemplate]);
+  }, [portfolioData, selectedTemplate, publishedInfo.slug, publishedInfo.ownerToken]);
 
   // Sync template change to state and storage
   const handleTemplateChange = (tmplId) => {
@@ -119,11 +126,28 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
     }
   };
 
-  const handleCopyLink = () => {
-    if (!publishedInfo?.url) return;
-    navigator.clipboard.writeText(publishedInfo.url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopyLink = async () => {
+    const linkToCopy = publishedInfo?.url || `${window.location.origin}/portfolio/${publishedInfo?.slug}`;
+    if (!linkToCopy) return;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(linkToCopy);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = linkToCopy;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
   };
 
   const handleStartNew = () => {
@@ -137,11 +161,11 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
 
   return (
     <div className="min-h-screen bg-slate-100/70 pb-20">
-      {/* Top Floating Control & Sharing Toolbar */}
+      {/* Top Floating Control Toolbar */}
       <section className="bg-white border-b border-borderLight sticky top-16 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Template Selector dropdown / buttons */}
+            {/* Template Selector buttons */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
               <span className="text-xs font-bold text-navy-900 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-accent" />
@@ -234,7 +258,7 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
               </span>
               {isSavingOnline && (
                 <span className="text-[11px] text-textSecondary italic">
-                  (syncing latest changes...)
+                  (syncing...)
                 </span>
               )}
             </div>
@@ -245,7 +269,7 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
             <div className="flex-grow flex items-center px-4 py-2.5 rounded-xl bg-slate-50 border border-borderLight text-xs font-mono text-navy-900 select-all truncate">
-              {publishedInfo?.url || 'Generating your unique shareable link...'}
+              {publishedInfo?.url || `${window.location.origin}/portfolio/${publishedInfo?.slug}`}
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
