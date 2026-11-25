@@ -26,13 +26,11 @@ The application produces three core recruiter-ready outputs:
 
 ---
 
-## Five Distinct Portfolio Templates
+## Three Distinct Portfolio Templates
 
-1. **Modern Professional**: Clean white backdrop, refined navy accents, structured timeline, and polished profile header.
-2. **Minimalist**: Generous whitespace, subtle typography, and minimal borders for maximum readability.
-3. **Corporate**: Executive navy banner, formal structured lines, and business-focused credentials.
-4. **Modern Developer**: Code terminal aesthetics, monospace accent tags, prominent tech badges, and repo/demo links.
-5. **Creative Professional**: Asymmetric 2-column editorial layout with modern narrative flow and sidebar credentials.
+1. **Modern Professional**: Premium professional appearance, refined navy typography, elegant hero section, and clean blue/navy accents.
+2. **Minimalist**: Clean white backdrop, simple typography, generous whitespace, minimal decoration, and clear section hierarchy.
+3. **Modern Developer**: Developer-focused design, command-style navigation, prominent skills, terminal accents, and highlighted GitHub links.
 
 ---
 
@@ -99,9 +97,7 @@ Personal Portfolio Website/
 │   ├── templates/
 │   │   ├── ModernProfessionalTemplate.jsx
 │   │   ├── MinimalistTemplate.jsx
-│   │   ├── CorporateTemplate.jsx
 │   │   ├── ModernDeveloperTemplate.jsx
-│   │   ├── CreativeProfessionalTemplate.jsx
 │   │   └── TemplateRenderer.jsx      # Dynamic template switcher
 │   ├── types/
 │   │   └── portfolio.js              # Data schema, categories, and constants

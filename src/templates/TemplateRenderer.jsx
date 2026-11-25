@@ -1,24 +1,18 @@
 import React from 'react';
 import ModernProfessionalTemplate from './ModernProfessionalTemplate';
 import MinimalistTemplate from './MinimalistTemplate';
-import CorporateTemplate from './CorporateTemplate';
 import ModernDeveloperTemplate from './ModernDeveloperTemplate';
-import CreativeProfessionalTemplate from './CreativeProfessionalTemplate';
 
-export default function TemplateRenderer({ data, templateId }) {
+export default function TemplateRenderer({ data, templateId, onDownloadResume }) {
   const currentTemplate = templateId || data?.templateId || 'modern-professional';
 
   switch (currentTemplate) {
     case 'minimalist':
-      return <MinimalistTemplate data={data} />;
-    case 'corporate':
-      return <CorporateTemplate data={data} />;
+      return <MinimalistTemplate data={data} onDownloadResume={onDownloadResume} />;
     case 'modern-developer':
-      return <ModernDeveloperTemplate data={data} />;
-    case 'creative-professional':
-      return <CreativeProfessionalTemplate data={data} />;
+      return <ModernDeveloperTemplate data={data} onDownloadResume={onDownloadResume} />;
     case 'modern-professional':
     default:
-      return <ModernProfessionalTemplate data={data} />;
+      return <ModernProfessionalTemplate data={data} onDownloadResume={onDownloadResume} />;
   }
 }

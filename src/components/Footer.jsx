@@ -28,9 +28,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm text-slate-400">
               <li>Modern Professional</li>
               <li>Minimalist</li>
-              <li>Corporate Executive</li>
               <li>Modern Developer</li>
-              <li>Creative Professional</li>
             </ul>
           </div>
 

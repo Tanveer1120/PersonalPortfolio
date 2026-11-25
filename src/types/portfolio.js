@@ -32,7 +32,7 @@ export const INITIAL_PORTFOLIO_DATA = {
   // Example certification entry structure:
   // { id: '', name: '', organization: '', year: '' }
 
-  templateId: 'modern-professional', // 'modern-professional' | 'minimalist' | 'corporate' | 'modern-developer' | 'creative-professional'
+  templateId: 'modern-professional', // 'modern-professional' | 'minimalist' | 'modern-developer'
 };
 
 export const SKILL_CATEGORIES = {
@@ -61,31 +61,19 @@ export const TEMPLATES = [
   {
     id: 'modern-professional',
     name: 'Modern Professional',
-    description: 'Clean white background, elegant navy accents, balanced typography, and structured layout.',
+    description: 'Premium professional appearance, elegant typography, balanced spacing, and clean navy/blue accents.',
     badge: 'Popular'
   },
   {
     id: 'minimalist',
     name: 'Minimalist',
-    description: 'Ultra-clean design with generous whitespace, subtle borders, and maximum reading focus.',
+    description: 'Clean white background, simple typography, generous whitespace, and minimal decoration.',
     badge: 'Clean'
-  },
-  {
-    id: 'corporate',
-    name: 'Corporate',
-    description: 'Executive navy headers, formal structured sections, and polished enterprise hierarchy.',
-    badge: 'Formal'
   },
   {
     id: 'modern-developer',
     name: 'Modern Developer',
-    description: 'Technical-first styling with prominent skill groups, code-style badges, and project highlights.',
+    description: 'Developer-focused design, strong project presentation, technical visual elements, and GitHub links.',
     badge: 'Tech'
-  },
-  {
-    id: 'creative-professional',
-    name: 'Creative Professional',
-    description: 'Distinctive asymmetrical editorial layout with sophisticated typography and modern flair.',
-    badge: 'Design'
   }
 ];

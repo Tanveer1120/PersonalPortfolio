@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import TemplateRenderer from '../templates/TemplateRenderer';
-import { Download, FileCheck2, ArrowLeft, AlertCircle, Share2, Copy, Check } from 'lucide-react';
+import { Download, FileCheck2, ArrowLeft, AlertCircle, Copy, Check } from 'lucide-react';
 import { generateAtsResumePdf } from '../pdf/generateAtsPdf';
 import { generatePortfolioPdf } from '../pdf/generatePortfolioPdf';
 
@@ -20,7 +20,7 @@ export default function PublicPortfolioPage() {
       try {
         const result = await api.getPortfolio(slug);
         if (!result) {
-          setError('This portfolio does not exist or has been unpublished by its owner.');
+          setError('This portfolio does not exist or has been removed.');
         } else {
           setPortfolioRecord(result);
         }
@@ -48,7 +48,7 @@ export default function PublicPortfolioPage() {
       <div className="min-h-screen bg-bgLight flex items-center justify-center p-4">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-4 border-navy-900 border-t-accent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-textSecondary font-medium">Loading portfolio...</p>
+          <p className="text-sm text-textSecondary font-medium">Loading portfolio website...</p>
         </div>
       </div>
     );
@@ -79,15 +79,19 @@ export default function PublicPortfolioPage() {
 
   const { data, template_id } = portfolioRecord;
 
+  const handleDownloadAtsResume = () => {
+    generateAtsResumePdf(data);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100/60 pb-20">
-      {/* Top Banner with Quick Actions for Recruiter / Visitor */}
-      <div className="bg-white border-b border-borderLight py-3 px-4 sm:px-8 sticky top-0 z-40 shadow-2xs">
+    <div className="min-h-screen bg-slate-100/50 pb-16">
+      {/* Top Floating Utility Bar for Visitors/Recruiters */}
+      <div className="bg-white/95 backdrop-blur-md border-b border-borderLight py-2.5 px-4 sm:px-8 sticky top-0 z-40 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
             <span className="text-xs font-bold text-navy-900">
-              {data.personal?.fullName}&apos;s Portfolio
+              {data.personal?.fullName}&apos;s Official Portfolio Website
             </span>
           </div>
 
@@ -103,16 +107,16 @@ export default function PublicPortfolioPage() {
 
             <button
               type="button"
-              onClick={() => generatePortfolioPdf('public-portfolio-document', data.personal?.fullName)}
+              onClick={() => generatePortfolioPdf('public-portfolio-website', data.personal?.fullName)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-900 text-white text-xs font-semibold hover:bg-navy-800 transition-colors shadow-2xs"
             >
               <Download className="w-3.5 h-3.5 text-accent" />
-              <span>Download PDF</span>
+              <span>Portfolio PDF</span>
             </button>
 
             <button
               type="button"
-              onClick={() => generateAtsResumePdf(data)}
+              onClick={handleDownloadAtsResume}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-2xs"
             >
               <FileCheck2 className="w-3.5 h-3.5" />
@@ -129,10 +133,16 @@ export default function PublicPortfolioPage() {
         </div>
       </div>
 
-      {/* Main Portfolio Document Display */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex justify-center">
-        <div id="public-portfolio-document" className="w-full max-w-4xl">
-          <TemplateRenderer data={data} templateId={template_id} />
+      {/* Main Full Personal Portfolio Website */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="bg-white rounded-3xl border border-borderLight shadow-md overflow-hidden">
+          <div id="public-portfolio-website" className="w-full">
+            <TemplateRenderer
+              data={data}
+              templateId={template_id}
+              onDownloadResume={handleDownloadAtsResume}
+            />
+          </div>
         </div>
       </main>
     </div>

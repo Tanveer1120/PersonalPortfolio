@@ -506,7 +506,7 @@ export default function StepExperience({ data, onChange }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {TEMPLATES.map((tmpl) => {
             const isSelected = data.templateId === tmpl.id;
             return (

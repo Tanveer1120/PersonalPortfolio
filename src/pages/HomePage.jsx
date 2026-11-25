@@ -20,7 +20,7 @@ export default function HomePage() {
   const features = [
     {
       icon: Layers,
-      title: 'Five Professional Templates',
+      title: 'Three Professional Templates',
       description: 'Choose from distinct, meticulously designed templates crafted specifically for tech, corporate, and creative disciplines.'
     },
     {
@@ -41,7 +41,7 @@ export default function HomePage() {
     {
       icon: Share2,
       title: 'Shareable Portfolio Links',
-      description: 'Publish online instantly and get a permanent unique public URL with WhatsApp and LinkedIn one-click sharing.'
+      description: 'Get an automatic unique public URL with WhatsApp and LinkedIn one-click sharing.'
     },
     {
       icon: Download,
@@ -210,14 +210,14 @@ export default function HomePage() {
               Diverse Design Systems
             </h2>
             <h3 className="text-3xl font-extrabold text-navy-900 tracking-tight">
-              Five Tailored Portfolio Templates
+              Three Tailored Portfolio Templates
             </h3>
             <p className="text-sm text-textSecondary">
               Each template is crafted with distinct layouts, typography, and section styling to match your career direction.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {TEMPLATES.map((tmpl) => (
               <div
                 key={tmpl.id}
@@ -257,7 +257,7 @@ export default function HomePage() {
                 Ready to stand out to hiring managers?
               </h3>
               <p className="text-slate-300 text-sm sm:text-base max-w-xl">
-                Create your complete portfolio and ATS resume in 4 simple steps. Download both PDFs immediately or publish directly with a public link.
+                Create your complete portfolio and ATS resume in 4 simple steps. Download both PDFs immediately or share your automatically generated public website link.
               </p>
             </div>
             <div className="lg:col-span-4 flex justify-start lg:justify-end">

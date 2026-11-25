@@ -1,19 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Edit3,
   Download,
   FileCheck2,
-  Share2,
-  Globe,
   Copy,
   Check,
   RotateCcw,
-  Trash2,
   ExternalLink,
   Layers,
   AlertTriangle,
-  Send
+  Globe,
+  Share2
 } from 'lucide-react';
 import TemplateRenderer from '../templates/TemplateRenderer';
 import { TEMPLATES } from '../types/portfolio';
@@ -29,11 +27,78 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
   );
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [publishedInfo, setPublishedInfo] = useState(() => loadPublishedInfo());
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [publishMessage, setPublishMessage] = useState('');
+  const [isSavingOnline, setIsSavingOnline] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('saved');
   const [copied, setCopied] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
-  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+
+  // Generate unique slug like: rahul-kumar-a82k91
+  const generateSlug = () => {
+    const raw = (portfolioData.personal?.fullName || 'portfolio')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    const randomHex = Math.random().toString(36).substring(2, 8);
+    return `${raw || 'portfolio'}-${randomHex}`;
+  };
+
+  // AUTOMATIC PERSISTENCE: Save to database and generate shareable link automatically
+  useEffect(() => {
+    let isCancelled = false;
+
+    const autoSyncToDatabase = async () => {
+      setIsSavingOnline(true);
+      setSyncStatus('saving');
+
+      try {
+        let slug = publishedInfo?.slug;
+        let ownerToken = publishedInfo?.ownerToken;
+
+        if (!slug || !ownerToken) {
+          slug = generateSlug();
+          ownerToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        }
+
+        const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+        const publicUrl = `${currentOrigin}/portfolio/${slug}`;
+
+        await api.publishPortfolio({
+          slug,
+          title: `${portfolioData.personal?.fullName || 'Personal'} Portfolio`,
+          data: portfolioData,
+          templateId: selectedTemplate,
+          ownerToken,
+        });
+
+        if (!isCancelled) {
+          const updatedInfo = {
+            slug,
+            ownerToken,
+            url: publicUrl,
+            updatedAt: new Date().toISOString(),
+          };
+          setPublishedInfo(updatedInfo);
+          savePublishedInfo(updatedInfo);
+          setSyncStatus('saved');
+        }
+      } catch (err) {
+        console.error('Automatic background sync to database failed:', err);
+        if (!isCancelled) {
+          setSyncStatus('fallback');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSavingOnline(false);
+        }
+      }
+    };
+
+    autoSyncToDatabase();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [portfolioData, selectedTemplate]);
 
   // Sync template change to state and storage
   const handleTemplateChange = (tmplId) => {
@@ -48,83 +113,9 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
   const handleDownloadPortfolioPdf = async () => {
     setIsGeneratingPdf(true);
     try {
-      await generatePortfolioPdf('portfolio-preview-document', portfolioData.personal?.fullName || 'portfolio');
+      await generatePortfolioPdf('portfolio-website-view', portfolioData.personal?.fullName || 'portfolio');
     } finally {
       setIsGeneratingPdf(false);
-    }
-  };
-
-  // Generate unique slug like: john-doe-a82k91
-  const generateSlug = () => {
-    const raw = (portfolioData.personal?.fullName || 'portfolio')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)+/g, '');
-    const randomHex = Math.random().toString(36).substring(2, 8);
-    return `${raw || 'portfolio'}-${randomHex}`;
-  };
-
-  const handlePublish = async () => {
-    setIsPublishing(true);
-    setPublishMessage('');
-    try {
-      let slug = publishedInfo?.slug;
-      let ownerToken = publishedInfo?.ownerToken;
-
-      if (!slug || !ownerToken) {
-        slug = generateSlug();
-        ownerToken = 'token_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-      }
-
-      await api.publishPortfolio({
-        slug,
-        title: `${portfolioData.personal?.fullName || 'Candidate'}'s Portfolio`,
-        data: portfolioData,
-        templateId: selectedTemplate,
-        ownerToken,
-      });
-
-      const newInfo = {
-        slug,
-        ownerToken,
-        publishedAt: new Date().toISOString(),
-        url: `${window.location.origin}/portfolio/${slug}`,
-      };
-
-      setPublishedInfo(newInfo);
-      savePublishedInfo(newInfo);
-      setPublishMessage('Portfolio is live and accessible online!');
-    } catch (err) {
-      console.error('Publish error:', err);
-      setPublishMessage('Publish error: ' + (err.message || 'Could not connect to server'));
-    } finally {
-      setIsPublishing(false);
-    }
-  };
-
-  const handleUnpublish = async () => {
-    if (!publishedInfo?.slug || !publishedInfo?.ownerToken) return;
-    try {
-      await api.unpublishPortfolio(publishedInfo.slug, publishedInfo.ownerToken);
-      const updated = { ...publishedInfo, isUnpublished: true };
-      setPublishedInfo(updated);
-      savePublishedInfo(updated);
-      setPublishMessage('Portfolio is now unpublished and hidden from the public.');
-    } catch (err) {
-      setPublishMessage('Failed to unpublish: ' + err.message);
-    }
-  };
-
-  const handleDeletePublished = async () => {
-    if (!publishedInfo?.slug || !publishedInfo?.ownerToken) return;
-    try {
-      await api.deletePortfolio(publishedInfo.slug, publishedInfo.ownerToken);
-      setPublishedInfo(null);
-      savePublishedInfo(null);
-      setShowConfirmDelete(false);
-      setPublishMessage('Published portfolio permanently deleted.');
-    } catch (err) {
-      setPublishMessage('Failed to delete: ' + err.message);
     }
   };
 
@@ -141,16 +132,16 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
   };
 
   const shareText = encodeURIComponent(
-    `Check out ${portfolioData.personal?.fullName || 'my'} professional portfolio: ${publishedInfo?.url || ''}`
+    `Check out ${portfolioData.personal?.fullName || 'my'} personal portfolio website: ${publishedInfo?.url || ''}`
   );
 
   return (
-    <div className="min-h-screen bg-slate-100/70 pb-24">
-      {/* Top Action & Control Bar */}
+    <div className="min-h-screen bg-slate-100/70 pb-20">
+      {/* Top Floating Control & Sharing Toolbar */}
       <section className="bg-white border-b border-borderLight sticky top-16 z-30 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            {/* Template Selector dropdown / pills */}
+            {/* Template Selector dropdown / buttons */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
               <span className="text-xs font-bold text-navy-900 uppercase tracking-wider shrink-0 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-accent" />
@@ -185,15 +176,28 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
                 <span>Edit Information</span>
               </button>
 
+              {publishedInfo?.slug && (
+                <a
+                  href={`/portfolio/${publishedInfo.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-borderLight bg-white text-xs font-semibold text-navy-900 hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  <Globe className="w-3.5 h-3.5 text-accent" />
+                  <span>Preview Website</span>
+                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                </a>
+              )}
+
               <button
                 type="button"
                 onClick={handleDownloadPortfolioPdf}
                 disabled={isGeneratingPdf}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy-900 text-white text-xs font-semibold hover:bg-navy-800 transition-colors shadow-2xs"
-                title="Download selected template as high-res A4 PDF"
+                title="Download selected website layout as A4 PDF"
               >
                 <Download className="w-3.5 h-3.5 text-accent" />
-                <span>{isGeneratingPdf ? 'Generating PDF...' : 'Portfolio PDF'}</span>
+                <span>{isGeneratingPdf ? 'Generating...' : 'Portfolio PDF'}</span>
               </button>
 
               <button
@@ -204,16 +208,6 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
               >
                 <FileCheck2 className="w-3.5 h-3.5" />
                 <span>ATS Resume PDF</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handlePublish}
-                disabled={isPublishing}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent text-white text-xs font-semibold hover:bg-blue-600 transition-colors shadow-sm"
-              >
-                <Globe className="w-3.5 h-3.5" />
-                <span>{isPublishing ? 'Publishing...' : publishedInfo ? 'Update Online' : 'Publish Online'}</span>
               </button>
 
               <button
@@ -229,107 +223,80 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
         </div>
       </section>
 
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-6">
-        {/* Published Share Box if active */}
-        {publishedInfo && !publishedInfo.isUnpublished && (
-          <div className="bg-white rounded-xl p-5 border-2 border-emerald-500/50 shadow-sm space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-1">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  Portfolio Is Live Online
+      {/* Shareable Link Bar (AUTOMATICALLY GENERATED - NO PUBLISH BUTTON) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-borderLight shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold text-navy-900 uppercase tracking-wider">
+                Your Shareable Portfolio Website URL
+              </span>
+              {isSavingOnline && (
+                <span className="text-[11px] text-textSecondary italic">
+                  (syncing latest changes...)
                 </span>
-                <p className="text-xs text-textSecondary">
-                  Anyone can view your portfolio using this permanent unique URL without needing a login.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleUnpublish}
-                  className="px-3 py-1.5 rounded-lg border border-borderLight text-xs font-semibold text-textSecondary hover:bg-slate-50 transition-colors"
-                >
-                  Unpublish
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmDelete(true)}
-                  className="px-3 py-1.5 rounded-lg border border-rose-200 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
+              )}
             </div>
-
-            {/* URL bar & Share buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-              <div className="flex-grow flex items-center px-3.5 py-2 rounded-lg bg-bgLight border border-borderLight text-xs font-mono text-navy-900 select-all truncate">
-                {publishedInfo.url}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-borderLight bg-white text-xs font-semibold text-navy-900 hover:bg-slate-50 transition-colors"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied Link!' : 'Copy Link'}</span>
-                </button>
-
-                <a
-                  href={`https://api.whatsapp.com/send?text=${shareText}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
-                >
-                  <span>WhatsApp</span>
-                </a>
-
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(publishedInfo.url)}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0A66C2] text-white text-xs font-semibold hover:bg-[#004182] transition-colors"
-                >
-                  <span>LinkedIn</span>
-                </a>
-
-                <a
-                  href={`/portfolio/${publishedInfo.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-navy-900 text-white text-xs font-semibold hover:bg-navy-800 transition-colors"
-                >
-                  <span>Open</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-
-            {publishMessage && (
-              <p className="text-xs text-emerald-600 font-medium">{publishMessage}</p>
-            )}
+            <span className="text-xs text-textSecondary">
+              Anyone with this link can view your portfolio online without needing a login.
+            </span>
           </div>
-        )}
 
-        {/* Live Document Preview Container */}
-        <div className="flex justify-center">
-          <div
-            id="portfolio-preview-document"
-            className="w-full max-w-4xl transition-all duration-300"
-          >
-            <TemplateRenderer data={portfolioData} templateId={selectedTemplate} />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <div className="flex-grow flex items-center px-4 py-2.5 rounded-xl bg-slate-50 border border-borderLight text-xs font-mono text-navy-900 select-all truncate">
+              {publishedInfo?.url || 'Generating your unique shareable link...'}
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-borderLight bg-white text-xs font-semibold text-navy-900 hover:bg-slate-50 transition-colors shadow-2xs"
+              >
+                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-accent" />}
+                <span>{copied ? 'Copied Link!' : 'Copy Link'}</span>
+              </button>
+
+              <a
+                href={`https://api.whatsapp.com/send?text=${shareText}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors shadow-2xs"
+              >
+                <span>WhatsApp</span>
+              </a>
+
+              <a
+                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(publishedInfo?.url || '')}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0A66C2] text-white text-xs font-semibold hover:bg-[#004182] transition-colors shadow-2xs"
+              >
+                <span>LinkedIn</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ACTUAL GENERATED PERSONAL PORTFOLIO WEBSITE PREVIEW */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        <div className="bg-white rounded-3xl border border-borderLight shadow-md overflow-hidden">
+          <div id="portfolio-website-view" className="w-full">
+            <TemplateRenderer
+              data={portfolioData}
+              templateId={selectedTemplate}
+              onDownloadResume={handleDownloadAtsResume}
+            />
+          </div>
+        </div>
+      </main>
+
       {/* Confirm Reset / Start New Modal */}
       {showConfirmReset && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl border border-borderLight">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-borderLight">
             <div className="flex items-center gap-3 text-amber-600">
               <AlertTriangle className="w-6 h-6" />
               <h3 className="text-base font-bold text-navy-900">Start New Portfolio?</h3>
@@ -351,37 +318,6 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
                 className="px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shadow-sm"
               >
                 Clear & Start New
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Delete Published Modal */}
-      {showConfirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl border border-borderLight">
-            <div className="flex items-center gap-3 text-rose-600">
-              <Trash2 className="w-6 h-6" />
-              <h3 className="text-base font-bold text-navy-900">Delete Published Portfolio?</h3>
-            </div>
-            <p className="text-sm text-textSecondary leading-relaxed">
-              This will permanently delete this published portfolio and its public URL will stop working immediately.
-            </p>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowConfirmDelete(false)}
-                className="px-4 py-2 rounded-lg border border-borderLight text-xs font-semibold text-textSecondary hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeletePublished}
-                className="px-4 py-2 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 shadow-sm"
-              >
-                Confirm Delete
               </button>
             </div>
           </div>
