@@ -215,17 +215,6 @@ export default function PreviewPortfolioPage({ portfolioData, setPortfolioData }
 
               <button
                 type="button"
-                onClick={handleDownloadPortfolioPdf}
-                disabled={isGeneratingPdf}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-navy-900 text-white text-xs font-semibold hover:bg-navy-800 transition-colors shadow-2xs"
-                title="Download selected website layout as A4 PDF"
-              >
-                <Download className="w-3.5 h-3.5 text-accent" />
-                <span>{isGeneratingPdf ? 'Generating...' : 'Portfolio PDF'}</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={handleDownloadAtsResume}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 text-white text-xs font-semibold hover:bg-emerald-800 transition-colors shadow-2xs"
                 title="Download single-column text-based ATS resume PDF"
