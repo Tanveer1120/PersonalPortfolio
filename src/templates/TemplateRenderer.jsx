@@ -10,6 +10,7 @@ export default function TemplateRenderer({ data, templateId, onDownloadResume })
     case 'minimalist':
       return <MinimalistTemplate data={data} onDownloadResume={onDownloadResume} />;
     case 'modern-developer':
+    case 'modern-tech':
       return <ModernDeveloperTemplate data={data} onDownloadResume={onDownloadResume} />;
     case 'modern-professional':
     default:

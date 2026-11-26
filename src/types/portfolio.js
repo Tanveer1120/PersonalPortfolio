@@ -72,7 +72,7 @@ export const TEMPLATES = [
   },
   {
     id: 'modern-developer',
-    name: 'Modern Developer',
+    name: 'Modern Tech',
     description: 'Developer-focused design, strong project presentation, technical visual elements, and GitHub links.',
     badge: 'Tech'
   }
